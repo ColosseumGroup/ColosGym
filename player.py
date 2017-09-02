@@ -7,9 +7,8 @@ class Player(object):
     ACTION_LIST = ['f', 'c', 'r']
     BUFFERSIZE = 256
 
-    def __init__(self, playerName, port,logPath, ip='localhost'):
-        self.result = open(
-            logPath, 'r')
+    def __init__(self, playerName, port, logPath, ip='localhost'):
+        self.result = open(logPath, 'r')
         self.playerName = playerName
         self.lastMsg = ''
         self.state = None
@@ -72,7 +71,10 @@ class Player(object):
                 reward = self.getReward(episode)
                 return reward
             else:
-                return 999999  # error
+                if state == -2:
+                    return 9999999
+                else:
+                    return 999999  # error
 
     def getCurrentState(self):
         pass
