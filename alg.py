@@ -4,9 +4,15 @@ import sys
 import time
 
 def main():
-    port = int(sys.argv[1])
-    logpath = sys.argv[2]
-    playerName = sys.argv[3]
+    test = True
+    if test:
+        port = 18374
+        logpath = "/home/goodman/POKER/project_acpc_server_v1.0.41/project_acpc_server/match1.log"
+        playerName = "Bob"
+    else:    
+        port = int(sys.argv[1])
+        logpath = sys.argv[2]
+        playerName = sys.argv[3]
 
 
     ply = player.Player(playerName,port,logpath)
@@ -15,26 +21,25 @@ def main():
     error = 0
     episode = 0
 
-    msgQueue = []
-    # 不断接受dealer的信息，判别是不是自己的动作时机，如果是自己的动作时机就生成动作
-    # 这里不考虑动作是否合法
-    while episode<1001:
-        msgQueue = ply.recvMsg()
-        for m in msgQueue:
-            msg = m
-            flag = ply.handleMsg(msg)
-            if flag == 0:#act
-                action = random.randint(0, 2)
-                ply.step(msg, action)
-                continue
-            if flag ==9999999:#clusy way of show flag
-                continue
-            if flag ==999999:
-                f.write(m)
-                continue
-            Total_reward += flag
+    while True:
+        obser,reward,done = ply.reset()
+        if done:
+            Total_reward += reward
+            episode += 1
+            continue
+        #如果先开一局，对方先发牌且对方马上弃牌，就会导致reset后马上结束
+        
+        if obser == None:
+            break
+        while True:
+            action = random.randint(0,2)
+            obser_,reward,done = ply.step(action)
+            if done:
+                Total_reward += reward
+                episode += 1
+                break
 
-        print('now:',Total_reward)
+        print('now:',Total_reward,"episode:",episode)
 
 if __name__ == '__main__':
     main()

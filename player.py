@@ -1,5 +1,7 @@
 import socket
 import GameSolver
+import threading
+import time
 # 这里的Player主要还是完成链接dealer 和 发送动作，接受信息的工作
 
 
@@ -11,39 +13,101 @@ class Player(object):
         self.result = open(logPath, 'r')
         self.playerName = playerName
         self.lastMsg = ''
+        self.currentMsg = ''
         self.state = None
         self.state_ = None
-        self.reward = 0.0
-        self.done = False
+        self.resetable = True
+        self.finish = True
+        self.exit =False
         self.connectToServer(port, ip)
+        self.msgQueue=[]
+        self.lock = threading.Lock()
+        t = threading.Thread(target=self.recvMsg)
+        t.start()
+        self.log = open('log.txt','w')
+        
 
     def connectToServer(self, port, ip):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.connect((ip, port))
         self.socket.send(b'VERSION:2.0.0\n')
-
+    def reset(self):
+        if self.resetable == False:
+            print("wrong timing to reset")
+            return None
+        else:
+            self.resetable = False
+            o, r, d = self.innerMsgloop()
+            return o ,r,d
     def recvMsg(self):
-        socketInfo = self.socket.recv(Player.BUFFERSIZE).decode('ascii')
-        socketInfo = socketInfo.split('MATCHSTATE')  # 由于时间不统一，可能一次收到多条msg
-        msgQueue = []
-        for msg in socketInfo:
-            if msg == '':
-                continue
-            msgQueue.append("MATCHSTATE" + msg)
-        assert(len(msgQueue) > 0)
-        return msgQueue
+        while True:
+            socketInfo = self.socket.recv(Player.BUFFERSIZE).decode('ascii')
+            if not socketInfo:
+                break
+            socketInfo = socketInfo.split('MATCHSTATE')  # 由于时间不统一，可能一次收到多条msg
+            
+            self.lock.acquire()
+            try:
+                for msg in socketInfo:
+                    if msg == '':
+                        continue
+                    self.msgQueue.append("MATCHSTATE" + msg)
+            finally:
+                self.lock.release()
+        print("Ready to exit")
+        self.exit = True
+        self.resetable = False
+        self.socket.close()
 
-    def step(self, msg, action):
-        msg = msg.rstrip('\r\n')
+    def step(self,action):
+        msg = self.currentMsg.rstrip('\r\n')
         act = '{}:{}\r\n'.format(msg, Player.ACTION_LIST[action])
         act = bytes(act, encoding='ascii')
         respon = self.socket.send(act)
         if respon == len(act):
-            return 1
+            return self.innerMsgloop()
         else:
-            return 0
+            print("Error when sending action")
+            return None
 
-    def getReward(self, episode):
+    def innerMsgloop(self):
+        while True:
+            if len(self.msgQueue) ==0:
+                if self.exit == True:
+                    return None
+                else:
+                    time.sleep(0.000001)
+                    continue
+            self.lock.acquire()
+            try:
+                msg = self.msgQueue.pop(0)
+            finally:
+                self.lock.release()
+                
+            flag = self.handleMsg(msg)
+            if flag == 2:#act
+                obser = self._getObser(msg)
+                reward = 0
+                done = 0
+                self.currentMsg = msg
+                break
+            if flag ==-2:#not acting
+                self.lastMsg = msg
+                continue
+            if flag ==3:
+                obser = self._getObser(msg)
+                episode = int(msg.split(':')[2])
+                reward = self._getReward(episode)
+                done = 1
+                self.resetable = True#allow a reset() call
+                self.lastMsg = msg
+                self.log.writelines(msg)
+                break
+
+        return obser,reward,done
+
+
+    def _getReward(self, episode):
         # 如果遇到了注释可跳过，一般这个循环不会执行两次。。
         while True:
             state_str = self.result.readline().rstrip('\n')
@@ -51,42 +115,47 @@ class Player(object):
             if len(state_list) == 6:
                 if episode == int(state_list[1]):
                     break
+
         reward_dict = dict(
             zip(state_list[5].split('|'), state_list[4].split('|')))
         reward = float(reward_dict[self.playerName])
         return reward
 
     def handleMsg(self, msg):
-        episode = int(msg.split(':')[2])
         state = GameSolver.ifCurrentPlayer(msg, self.lastMsg)
-        self.lastMsg = msg
-        # flag == -4 error, ==3 finish, ==2 act, ==-2 not acting
+        # flag: error=-4, finish==3, act==2, not acting==-2
         if state == -4.0:
             print("read state error")
             state = 3.0  # 根据log的规律。。。。具体我再看看
-        if state == 2.0:
-            return 0
-        else:
-            if state == 3:
-                reward = self.getReward(episode)
-                return reward
-            else:
-                if state == -2:
-                    return 9999999
-                else:
-                    return 999999  # error
+        return state
 
-    def getCurrentState(self):
-        pass
+    def _getObser(self, msg):
+        msg = msg.rstrip('\r\n')
+        card_num = ['A', '2', '3', '4', '5', '6',
+                    '7', '8', '9', 'T', 'J', 'Q', 'K']
+        num = [n for n in range(0, 13)]
+        card_dict = dict(zip(card_num, num))
+        suit = ['s', 'h', 'd', 'c']
+        suit_dict = dict(zip(suit, num))
 
-    def _decomposeMsg(self, msg):
-        msg = msg.split(':')
-        match_flag = msg[0]  # msg[0]总是MATCHSTATE
-        current_player = int(msg[1])  # 当前玩家的编号
-        episode = int(msg[2])  # 当前对局是第几局
-        action_trace = msg[3]  # 当前对局所有的决策记录
-        cards = msg[4]  # 所有牌面信息
-        return current_player, episode, action_trace, cards
+        statelist = msg.split(":")
+        cards = statelist[4]
 
-    def _msgToState(self, msg):
-        return [], 0.0, [], False
+        deck_cards = cards.split("/")
+        hand_card = deck_cards.pop(0).split('|')
+
+        cardsstate = []
+        def std2cardList(cardset):
+            for card in cardset:
+                i = 0
+                while i < (len(card) - 1):
+                    temp = ''
+                    temp += card[i]
+                    i += 1
+                    temp += card[i]
+                    i += 1
+                    cardsstate.append(temp)
+        std2cardList(deck_cards)
+        std2cardList(hand_card)
+        cardsstate.sort(key=lambda x: 4 * card_dict[x[0]] + suit_dict[x[1]])
+        return cardsstate
