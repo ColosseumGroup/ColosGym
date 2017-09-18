@@ -95,7 +95,7 @@ class Player(object):
                 self.lastMsg = msg
                 continue
             if flag ==3:
-                obser = self._getObser(msg)
+                obser = [0,0,0,0,0,0,0]
                 episode = int(msg.split(':')[2])
                 reward = self._getReward(episode)
                 done = 1
@@ -128,8 +128,17 @@ class Player(object):
             print("read state error")
             state = 3.0  # 根据log的规律。。。。具体我再看看
         return state
-
+    
     def _getObser(self, msg):
+        msg = msg.rstrip('\r\n')
+        statelist = msg.split(":")
+        action_trace = statelist[3] #eg rc/crrc/
+        card = statelist[4]#eg |2c3d/5d6hTc/6d
+        cardVal = getCardValList(card)
+        cardVal.append(getActionVal(action_trace))
+        return cardVal
+        
+    def _getObser_not_using_any_more(self, msg):
         msg = msg.rstrip('\r\n')
         card_num = ['A', '2', '3', '4', '5', '6',
                     '7', '8', '9', 'T', 'J', 'Q', 'K']
@@ -159,3 +168,54 @@ class Player(object):
         std2cardList(hand_card)
         cardsstate.sort(key=lambda x: 4 * card_dict[x[0]] + suit_dict[x[1]])
         return cardsstate
+    
+    
+def getActionVal(statelist_action):
+    #rc/rc/rc To rcrcrc
+    action_dict = {'c':2,'r':1,'f':0}
+    action_trace = statelist_action.split("/")
+    action_ternary = ""
+    for a in action_trace:
+        action_ternary += a
+    #rcrcrc To TernaryValue
+    trace_list = list(action_ternary)
+    ternary = 1
+    result = 0
+    while len(trace_list)!=0:
+        result += action_dict[trace_list.pop()]*ternary
+        ternary = ternary*3
+    return result
+
+def calculateCardVal(card):
+    if card is "":
+        return 0
+    card_num = ['A', '2', '3', '4', '5', '6',
+            '7', '8', '9', 'T', 'J', 'Q', 'K']
+    num = [n for n in range(0, 13)]
+    card_dict = dict(zip(card_num, num))
+    suit = ['c', 'd', 's', 'h']
+    suit_dict = dict(zip(suit, num))
+    return card_dict[card[0]]+suit_dict[card[1]]*13 + 1
+
+def cards2cardValList(card,cardsstate):
+    i = 0
+    while i < (len(card) - 1):
+        temp = ''
+        temp += card[i]
+        i += 1
+        temp += card[i]
+        i += 1
+        cardsstate.append(calculateCardVal(temp))
+            
+def getCardValList(statelist_card):
+    deck_cards = statelist_card.split("/")
+    hand_card = deck_cards.pop(0).split('|')
+    hand_card.remove("")
+    hand_card = hand_card[0]
+    cardValList = []
+    cards2cardValList(hand_card,cardValList)
+    for cards in deck_cards:
+        cards2cardValList(cards,cardValList)
+    while len(cardValList)!=7:
+        cardValList.append(0)
+    return cardValList
