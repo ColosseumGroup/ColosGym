@@ -34,7 +34,7 @@ def main():
         while True:
             action = random.randint(0,2)
             obser_,reward,done = ply.step(action)
-            print(obser_)
+            print(len(obser_))
             if done:
                 Total_reward += reward
                 episode += 1

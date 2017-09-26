@@ -2,7 +2,10 @@ import socket
 import GameSolver
 import threading
 import time
+import numpy as np
 # 这里的Player主要还是完成链接dealer 和 发送动作，接受信息的工作
+
+
 
 
 class Player(object):
@@ -86,7 +89,7 @@ class Player(object):
                 
             flag = self.handleMsg(msg)
             if flag == 2:#act
-                obser = self._getObser(msg)
+                obser = _getObser(msg)
                 reward = 0
                 done = 0
                 self.currentMsg = msg
@@ -95,7 +98,7 @@ class Player(object):
                 self.lastMsg = msg
                 continue
             if flag ==3:
-                obser = [0,0,0,0,0,0,0]
+                obser = np.zeros(248)
                 episode = int(msg.split(':')[2])
                 reward = self._getReward(episode)
                 done = 1
@@ -129,47 +132,41 @@ class Player(object):
             state = 3.0  # 根据log的规律。。。。具体我再看看
         return state
     
-    def _getObser(self, msg):
-        msg = msg.rstrip('\r\n')
-        statelist = msg.split(":")
-        action_trace = statelist[3] #eg rc/crrc/
-        card = statelist[4]#eg |2c3d/5d6hTc/6d
-        cardVal = getCardValList(card)
-        cardVal.append(getActionVal(action_trace))
-        return cardVal
+
         
-    def _getObser_not_using_any_more(self, msg):
-        msg = msg.rstrip('\r\n')
-        card_num = ['A', '2', '3', '4', '5', '6',
-                    '7', '8', '9', 'T', 'J', 'Q', 'K']
-        num = [n for n in range(0, 13)]
-        card_dict = dict(zip(card_num, num))
-        suit = ['s', 'h', 'd', 'c']
-        suit_dict = dict(zip(suit, num))
 
-        statelist = msg.split(":")
-        cards = statelist[4]
-
-        deck_cards = cards.split("/")
-        hand_card = deck_cards.pop(0).split('|')
-
-        cardsstate = []
-        def std2cardList(cardset):
-            for card in cardset:
-                i = 0
-                while i < (len(card) - 1):
-                    temp = ''
-                    temp += card[i]
-                    i += 1
-                    temp += card[i]
-                    i += 1
-                    cardsstate.append(temp)
-        std2cardList(deck_cards)
-        std2cardList(hand_card)
-        cardsstate.sort(key=lambda x: 4 * card_dict[x[0]] + suit_dict[x[1]])
-        return cardsstate
     
-    
+def _getObser_not_using_any_more(msg):
+    msg = msg.rstrip('\r\n')
+    card_num = ['A', '2', '3', '4', '5', '6',
+                '7', '8', '9', 'T', 'J', 'Q', 'K']
+    num = [n for n in range(0, 13)]
+    card_dict = dict(zip(card_num, num))
+    suit = ['s', 'h', 'd', 'c']
+    suit_dict = dict(zip(suit, num))
+
+    statelist = msg.split(":")
+    cards = statelist[4]
+
+    deck_cards = cards.split("/")
+    hand_card = deck_cards.pop(0).split('|')
+
+    cardsstate = []
+    def std2cardList(cardset):
+        for card in cardset:
+            i = 0
+            while i < (len(card) - 1):
+                temp = ''
+                temp += card[i]
+                i += 1
+                temp += card[i]
+                i += 1
+                cardsstate.append(temp)
+    std2cardList(deck_cards)
+    std2cardList(hand_card)
+    cardsstate.sort(key=lambda x: 4 * card_dict[x[0]] + suit_dict[x[1]])
+    return cardsstate
+
 def getActionVal(statelist_action):
     #rc/rc/rc To rcrcrc
     action_dict = {'c':2,'r':1,'f':0}
@@ -219,3 +216,60 @@ def getCardValList(statelist_card):
     while len(cardValList)!=7:
         cardValList.append(0)
     return cardValList
+
+def _getObser_list_version(msg):
+    msg = msg.rstrip('\r\n')
+    statelist = msg.split(":")
+    action_trace = statelist[3] #eg rc/crrc/
+    card = statelist[4]#eg |2c3d/5d6hTc/6d
+    cardVal = getCardValList(card)
+    cardVal.append(getActionVal(action_trace))
+    return cardVal
+
+def cards2cardVector(card):
+    cardVector = np.zeros((52))
+    i = 0
+    while i < (len(card) - 1):
+        temp = ''
+        temp += card[i]
+        i += 1
+        temp += card[i]
+        i += 1
+        #此处对card的值减1是为了和Index对应，使用旧代码有点不一样
+        cardVector[calculateCardVal(temp)-1]=1
+    return cardVector
+
+def getCardMtx(stateList_card):
+    cardMtx = np.zeros((4,52))
+    deck_cards = stateList_card.split("/")
+    deck_cards[0] = deck_cards[0].strip('|')
+    i = 0
+    for cards in deck_cards:
+        cardMtx[i,:] = cards2cardVector(cards)
+        i+=1
+    return cardMtx
+
+def getActionStateMtx(action_trace,player_num):
+    actionList = action_trace.split('/')
+    actionMtx = np.zeros((2,4,5))
+    rounds = len(actionList)-1
+    actionCurrent = actionList.pop()
+    raise_size = 0
+    
+    for action in actionCurrent:
+        if action == 'r':
+            raise_size+=1
+    actionMtx[player_num,rounds,raise_size] = 1
+    return actionMtx
+
+
+def _getObser(msg):
+    msg=msg.rstrip('\r\n')
+    statelist = msg.split(":")
+    action_trace = statelist[3] #eg rc/crrc/
+    card = statelist[4]#eg |2c3d/5d6hTc/6d
+    player_num =int(statelist[1]) 
+    cardMtx = getCardMtx(card)
+    actionMtx = getActionStateMtx(action_trace,player_num)
+    obser = np.append(actionMtx.flatten(),cardMtx.flatten())
+    return obser
