@@ -37,11 +37,14 @@ class Player(object):
     def reset(self):
         if self.resetable == False:
             print("wrong timing to reset")
-            return None
+            return None ,None ,None
         else:
             self.resetable = False
-            o, r, d = self.innerMsgloop()
-            return o ,r,d
+            try:
+                o, r, d = self.innerMsgloop()
+                return o ,r,d
+            except Exception as e:
+                return None,None,None
     def recvMsg(self):
         while True:
             socketInfo = self.socket.recv(Player.BUFFERSIZE).decode('ascii')
@@ -57,6 +60,7 @@ class Player(object):
                     self.msgQueue.append("MATCHSTATE" + msg)
             finally:
                 self.lock.release()
+        time.sleep(1)
         print("Ready to exit")
         self.exit = True
         self.resetable = False
