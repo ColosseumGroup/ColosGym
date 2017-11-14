@@ -6,8 +6,8 @@ import time
 def main():
     test = True
     if test:
-        port = 18374
-        logpath = "/home/goodman/POKER/project_acpc_server_v1.0.41/project_acpc_server/match1.log"
+        port = 46870
+        logpath = "/home/xzp/project_acpc_server/mm1.log"
         playerName = "Bob"
     else:    
         port = int(sys.argv[1])
@@ -15,13 +15,14 @@ def main():
         playerName = sys.argv[3]
 
 
-    ply = player.Player(playerName,port,logpath)
-    f = open('log.txt','w')
+    ply = player.Player("LIMITLEDUCHOLDEM",playerName,port,logpath)
+    #f = open('log.txt','w')
     Total_reward = 0.0
-    error = 0
+    #error = 0
     episode = 0
 
     while True:
+        #print("hi1")
         obser,reward,done = ply.reset()
         if done:
             Total_reward += reward
@@ -29,10 +30,11 @@ def main():
             continue
         #如果先开一局，对方先发牌且对方马上弃牌，就会导致reset后马上结束
         
-        if obser == None:
+        if obser is None:
             break
         while True:
             action = random.randint(0,2)
+            print("h4")
             obser_,reward,done = ply.step(action)
             print(len(obser_))
             if done:

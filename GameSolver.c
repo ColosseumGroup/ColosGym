@@ -4,6 +4,41 @@
 //////////////////////////////////////////////////////////////////////////////////这里开始
 //初始化Game，原来的代码是去解析.game文档
 //这里我为了简化，写手工输入
+short getGameLeduc(Game *game)
+{
+    int ROUNDS = 2;
+    int STACK = 1200;
+    for (int c = 0; c < ROUNDS; ++c)
+    {
+        game->stack[c] = STACK;
+    }
+
+    game->bettingType = limitBetting;
+    game->numPlayers = 2;
+    game->numRounds = 2;
+    ///////////////////////////////////
+    game->firstPlayer[0] = 1;
+    game->firstPlayer[1] = 1;
+    // /////////////////////////////////
+    game->maxRaises[0] = 2;
+    game->maxRaises[1] = 2;
+    ////////////////////////////////////
+    game->numSuits = 2;
+    game->numRanks = 3;
+    game->numHoleCards = 1;
+    /////////////////////////////
+    game->blind[0] = 1;
+    game->blind[1] = 1;
+    /////////////////////
+    game->raiseSize[0] = 2;
+    game->raiseSize[1] = 4;
+    ///////////////////////////
+    game->numBoardCards[0] = 0;
+    game->numBoardCards[1] = 1;
+    //////////////////
+    game->numHoleCards = 1;
+    return 1;
+}
 short getGame(Game *game)
 {
 
@@ -98,7 +133,34 @@ double ifCurrentPlayer(const char *msg, const char *lastMsg)
         return -2.0;
     }
 }
+double ifCurrentPlayerLeduc(const char *msg, const char *lastMsg)
+{
 
+    Game *game;
+    MatchState state;
+    game = (Game *)malloc(sizeof(*game));
+    getGameLeduc(game);
+    readMatchState(lastMsg, game, &state);
+    int len = readMatchState(msg, game, &state);
+    if (len < 0)
+    {
+        return 3.0;
+    }
+    uint8_t currentP = currentPlayer(game, &state.state);
+    free(game);
+    if (stateFinished(&state.state))
+    {
+        return 3.0;
+    }
+    if (state.viewingPlayer != currentP)
+    {
+        return 2.0;
+    }
+    else
+    {
+        return -2.0;
+    }
+}
 //下面是一些包装成python可调用的形式的套路
 static PyObject *_getReward(PyObject *self, PyObject *args)
 {
@@ -128,6 +190,19 @@ static PyObject *_currentPlayer(PyObject *self, PyObject *args)
     res = ifCurrentPlayer(_msg, _lastMsg);
     return PyFloat_FromDouble(res);
 }
+static PyObject *_ifCurrentPlayerLeduc(PyObject *self, PyObject *args)
+{
+    char *_msg;
+    char *_lastMsg;
+
+    double res;
+    if (!PyArg_ParseTuple(args, "ss", &_msg, &_lastMsg))
+    {
+        return NULL;
+    }
+    res = ifCurrentPlayerLeduc(_msg, _lastMsg);
+    return PyFloat_FromDouble(res);
+}
 static PyMethodDef GameSolverMethods[] = {
     {"getReward",
      _getReward,
@@ -137,6 +212,11 @@ static PyMethodDef GameSolverMethods[] = {
      _currentPlayer,
      METH_VARARGS,
      ""},
+     {"ifCurrentPlayerLeduc",
+     _ifCurrentPlayerLeduc,
+     METH_VARARGS,
+     ""
+     },
     {NULL, NULL, 0, NULL}};
 static struct PyModuleDef GameSolver = {
 
