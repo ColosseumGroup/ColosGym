@@ -42,15 +42,15 @@ def main():
 
     logpath = "/home/xzp/project_acpc_server/mm1.log"
 
-    port = 45112
+    port = 44352
     playerName = "Alice"
     ply = player.Player(playerName=playerName,port=port,logPath=logpath)
 
-    port2 = 32952
+    port2 = 38881
     playerName2 = "Bob"
     ply2 = player.Player(playerName=playerName2,port=port2,logPath=logpath)
 
-    port3 = 42596
+    port3 = 43484
     playerName3 = "James"
     ply3 = player.Player(playerName=playerName3, port=port3, logPath=logpath)
 

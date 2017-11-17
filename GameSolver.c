@@ -15,9 +15,6 @@ double getReward(const char *msg, const char *lastMsg,
     //这里有点乱。。。。不用这个了
     int playerSeat,seatToPlayer,len;
     MatchState state;
-    Game *game;
-    game = (Game *)malloc(sizeof(*game));
-    getGame(game);
     readMatchState(lastMsg, game, &state);
     len = readMatchState(msg, game, &state);
     assert(len > 0);
@@ -28,12 +25,11 @@ double getReward(const char *msg, const char *lastMsg,
     seatToPlayer = state.viewingPlayer;
     
     double res = valueOfState(game, &state.state, seatToPlayer);
-    free(game);
     return res;
 }
 
 //同样是调用别人在ExamplePlayer里面写的currentplayer
-static double ifCurrentPlayer(const char *msg, const char *lastMsg)
+static double ifCurrentPlayer(const char *msg)
 {
     MatchState state;
     int len = readMatchState(msg, game, &state);
@@ -54,7 +50,13 @@ static double ifCurrentPlayer(const char *msg, const char *lastMsg)
         return 2.0;
     }
 }
-
+static void initGame(const char *path)
+{
+    if(game == NULL){
+        FILE *file = fopen(path,"r");
+        game = readGame(file);
+    }
+}
 //下面是一些包装成python可调用的形式的套路
 static PyObject *_getReward(PyObject *self, PyObject *args)
 {
@@ -63,7 +65,7 @@ static PyObject *_getReward(PyObject *self, PyObject *args)
     double res;
     int _fix = 0;
     int _epi,_pNum;
-    
+
     if (!PyArg_ParseTuple(args, "ssii|i", &_msg, &_lastMsg, &_epi,&_pNum,&_fix))
     {
         return NULL;
@@ -71,17 +73,26 @@ static PyObject *_getReward(PyObject *self, PyObject *args)
     res = getReward(_msg, _lastMsg,_epi,_pNum,_fix);
     return PyFloat_FromDouble(res);
 }
-static PyObject *_currentPlayer(PyObject *self, PyObject *args)
+static PyObject *_initGame(PyObject *self, PyObject *args)
 {
-    char *_msg;
-    char *_lastMsg;
-
-    double res;
-    if (!PyArg_ParseTuple(args, "ss", &_msg, &_lastMsg))
+    char *path;
+    if (!PyArg_ParseTuple(args, "s", &path))
     {
         return NULL;
     }
-    res = ifCurrentPlayer(_msg, _lastMsg);
+    initGame(path);
+    return PyFloat_FromDouble(1.0);
+}
+static PyObject *_currentPlayer(PyObject *self, PyObject *args)
+{
+    char *_msg;
+
+    double res;
+    if (!PyArg_ParseTuple(args, "s", &_msg))
+    {
+        return NULL;
+    }
+    res = ifCurrentPlayer(_msg);
     return PyFloat_FromDouble(res);
 }
 
@@ -92,6 +103,10 @@ static PyMethodDef GameSolverMethods[] = {
      ""},
     {"ifCurrentPlayer",
      _currentPlayer,
+     METH_VARARGS,
+     ""},
+     {"initGame",
+     _initGame,
      METH_VARARGS,
      ""},
     {NULL, NULL, 0, NULL}};
@@ -106,10 +121,6 @@ PyMODINIT_FUNC PyInit_GameSolver(void)
 {
     PyObject *m;
     m = PyModule_Create(&GameSolver);
-
-    FILE *file = fopen("/home/xzp/PycharmProjects/AlgScript_poker/LimitLeduc.game","r");
-    game = readGame(file);
-
     if (m == NULL)
     {
         return NULL;

@@ -11,7 +11,7 @@ class PokerGame(object):
     """
 
     def __init__(self,numPlayers, numRounds,
-                 numSuits, numRanks, numHoleCards, numRaiseTimes, numBoardCards):
+                 numSuits, numRanks, numHoleCards, numRaiseTimes, numBoardCards, gamePath):
         self.numPlayers = numPlayers
         self.numRounds = numRounds
         self.numSuits = numSuits
@@ -19,10 +19,12 @@ class PokerGame(object):
         self.numHoleCards = numHoleCards
         self.maxRaiseTimes = numRaiseTimes
         self.numBoardCards = numBoardCards
+        self.gamePath = gamePath
 
 
 LeducPlayer3 = PokerGame(numPlayers=3, numRounds=2, numSuits=2, numRanks=3, numHoleCards=1,
-                         numRaiseTimes=2, numBoardCards=1)
+                         numRaiseTimes=2, numBoardCards=1,
+                         gamePath="/home/xzp/PycharmProjects/AlgScript_poker/LimitLeduc.game")
 GAME = LeducPlayer3
 
 
@@ -62,6 +64,7 @@ class Player(object):
         self.lock = threading.Lock()
         t = threading.Thread(target=self.recvMsg)
         t.start()
+        GameSolver.initGame(GAME.gamePath)  # 必须初始化！
 
     def connectToServer(self, port, ip):
         """
@@ -205,7 +208,7 @@ class Player(object):
         :param msg: 消息字符串
         :return: 状态的flag ： error=-4, finish==3, act==2, not acting==-2
         """
-        state = GameSolver.ifCurrentPlayer(msg, self.lastMsg)
+        state = GameSolver.ifCurrentPlayer(msg)
         if state == -4.0:
             print("read state error")
             state = 3.0  # 根据log的规律。。。。具体我再看看
