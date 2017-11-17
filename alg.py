@@ -6,7 +6,7 @@ import time
 def main():
     test = True
     if test:
-        port = 46870
+        port = 35654
         logpath = "/home/xzp/project_acpc_server/mm1.log"
         playerName = "Bob"
     else:    
@@ -15,7 +15,7 @@ def main():
         playerName = sys.argv[3]
 
 
-    ply = player.Player("LIMITLEDUCHOLDEM",playerName,port,logpath)
+    ply = player.Player(playerName=playerName,port=port,logPath=logpath)
     #f = open('log.txt','w')
     Total_reward = 0.0
     #error = 0

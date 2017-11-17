@@ -1,8 +1,8 @@
 GAMEDEF
 limit
-numPlayers = 2
+numPlayers = 3
 numRounds = 2
-blind = 1 1
+blind = 1 1 0
 firstPlayer = 1 1
 raiseSize = 2 4
 maxRaises = 2 2
