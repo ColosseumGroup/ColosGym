@@ -2,30 +2,37 @@
 #include <assert.h>
 #include "game.h"
 #include <stdio.h>
-//////////////////////////////////////////////////////////////////////////////////这里开始
-//初始化Game，原来的代码是去解析.game文档
-//这里我为了简化，写手工输入
 
-static Game* game = NULL;
 
-//完成了一些初始化还有调用 别人在game.c写的valueOfState
+static Game* game = NULL;  /*游戏定义，module初始化的时候被初始化*/
+
+
+/*
+暂时不用的GetReward
+*/
+static uint8_t playerToSeat(const Game *game, const uint8_t player0Seat,
+                            const uint8_t player)
+{
+  return (player + player0Seat) % game->numPlayers;
+}
 double getReward(const char *msg, const char *lastMsg,
                  const int episode, const int playerNum, int fix_table)
 {
-    //这里有点乱。。。。不用这个了
-    int playerSeat,seatToPlayer,len;
+    int player0Seat=0,len=0,result=0;
     MatchState state;
     readMatchState(lastMsg, game, &state);
     len = readMatchState(msg, game, &state);
     assert(len > 0);
-    if (!fix_table)
-    {
-        playerSeat = ( playerNum+episode) % game->numPlayers;
+    if(!fix_table){
+        player0Seat = (player0Seat+episode)%game->numPlayers;
     }
-    seatToPlayer = state.viewingPlayer;
-    
-    double res = valueOfState(game, &state.state, seatToPlayer);
-    return res;
+    for(int i = 0;i<game->numPlayers;++i)
+    {
+        if(playerToSeat(game,player0Seat,i)==playerNum){
+            return valueOfState(game,&state.state,i);
+        }
+    }
+    return 3.1415926;  // werid number for error。。。。
 }
 
 //同样是调用别人在ExamplePlayer里面写的currentplayer
@@ -50,6 +57,9 @@ static double ifCurrentPlayer(const char *msg)
         return 2.0;
     }
 }
+/*
+模块初始化时，必须初始化，否则运算结果错误或异常
+*/
 static void initGame(const char *path)
 {
     if(game == NULL){
@@ -57,7 +67,11 @@ static void initGame(const char *path)
         game = readGame(file);
     }
 }
-//下面是一些包装成python可调用的形式的套路
+
+
+//********下面是一些包装成python可调用的形式的套路**************
+
+
 static PyObject *_getReward(PyObject *self, PyObject *args)
 {
     char *_msg;
@@ -127,7 +141,3 @@ PyMODINIT_FUNC PyInit_GameSolver(void)
     }
     return m;
 }
-
-/*PyMODINIT_FUNC init_getReward_function(){
-    Py_InitModule("getReward",_getReward_functionMethods);
-}*/

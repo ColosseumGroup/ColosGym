@@ -39,19 +39,22 @@ class Player(object):
     ACTION_LIST = ['f', 'c', 'r']
     BUFFERSIZE = 256
 
-    def __init__(self, playerName, port, logPath, ip='localhost'):
+    def __init__(self, port,playerNum = -1, ip='localhost',playerName='www',buffersize=256):
         """
         初始化玩家类，在这里Player主要还是完成链接dealer 和 发送动作，接受信息的工作
-        :param playerName: 玩家的名字，Example:'Alice'
         :param port: 端口
-        :param logPath: 由Dealer写的Log的文档，后期会删除
         :param ip: IP地址，默认值为’localhost‘
+        :param playerNum: 玩家的顺序，必须的参数，从0开始index
+        :param playerName: 玩家的名字，非必须，Example:'Alice'，默认值为www+playerNum
+        :param buffersize: 接收字串的buffer大小，默认为256
         """
         # 下面几个变量是应该要去除的变量
-        self.result = open(logPath, 'r')
-        self.log = open('log.txt', 'w')
-        self.playerName = playerName
-
+        if(playerName is 'www'):
+            self.playerName = playerName + str(playerNum);
+        else:
+            self.playerName = playerName
+        Player.BUFFERSIZE = buffersize
+        self.playerNum = playerNum
         self.lastMsg = ''
         self.currentMsg = ''
         self.state = None
@@ -173,34 +176,16 @@ class Player(object):
                 obser = np.zeros(shape=(GAME.numPlayers * GAME.numRounds * GAME.maxRaiseTimes +
                                  GAME.numRounds * GAME.numSuits * GAME.numRanks))
                 episode = int(msg.split(':')[2])
-                reward = self._getReward(episode=episode)
+                reward = GameSolver.getReward(msg,self.lastMsg,episode,self.playerNum,0)
                 done = 1
                 self.resetable = True  # allow a reset() call
                 self.lastMsg = msg
-                self.log.writelines(msg)
+                #self.log.writelines(msg)
                 break
 
         return obser, reward, done
 
-    def _getReward(self, episode):
-        """
-        跟据消息返回回报
-        :param episode: 当前的局数
-        :return: reward，double
-        """
-        # TODO 取消使用读取log获得回报的方法，直接从message获取
-        while True:
-            state_str = self.result.readline().rstrip('\n')
-            state_list = state_str.split(":")
-            if len(state_list) == 6:
-                if episode == int(state_list[1]):
-                    break
 
-        reward_dict = dict(
-            zip(state_list[5].split('|'), state_list[4].split('|')))
-        reward = float(reward_dict[self.playerName])
-
-        return reward
 
     def handleMsg(self, msg):
         """
@@ -213,6 +198,25 @@ class Player(object):
             print("read state error")
             state = 3.0  # 根据log的规律。。。。具体我再看看
         return state
+
+    def _getReward(self, episode):
+        """
+        跟据消息返回回报,已经抛弃，可随意忽视，但仍作保留，以便从文档获得reward
+        :param episode: 当前的局数
+        :return: reward，double
+        """
+        while True:
+            state_str = self.result.readline().rstrip('\n')
+            state_list = state_str.split(":")
+            if len(state_list) == 6:
+                if episode == int(state_list[1]):
+                    break
+
+        reward_dict = dict(
+            zip(state_list[5].split('|'), state_list[4].split('|')))
+        reward = float(reward_dict[self.playerName])
+
+        return reward
 
 
 def calculateCardVal(card):

@@ -15,14 +15,11 @@ def main():
         playerName = sys.argv[3]
 
 
-    ply = player.Player(playerName=playerName,port=port,logPath=logpath)
-    #f = open('log.txt','w')
+    ply = player.Player(playerNum=1,port=port)
     Total_reward = 0.0
-    #error = 0
     episode = 0
 
     while True:
-        #print("hi1")
         obser,reward,done = ply.reset()
         if done:
             Total_reward += reward

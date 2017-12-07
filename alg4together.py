@@ -40,19 +40,15 @@ def main():
         logpath = sys.argv[2]
         playerName = sys.argv[3]
 
-    logpath = "/home/xzp/project_acpc_server/mm1.log"
 
-    port = 44352
-    playerName = "Alice"
-    ply = player.Player(playerName=playerName,port=port,logPath=logpath)
+    port = 41492
+    ply = player.Player(playerNum=0,port=port)
 
-    port2 = 38881
-    playerName2 = "Bob"
-    ply2 = player.Player(playerName=playerName2,port=port2,logPath=logpath)
+    port2 = 35435
+    ply2 = player.Player(playerNum=1,port=port2)
 
-    port3 = 43484
-    playerName3 = "James"
-    ply3 = player.Player(playerName=playerName3, port=port3, logPath=logpath)
+    port3 = 33877
+    ply3 = player.Player(playerNum=2, port=port3)
 
     t1 = threading.Thread(target=game4palyer,args=(ply,))
     t2 = threading.Thread(target=game4palyer,args=(ply2,))
