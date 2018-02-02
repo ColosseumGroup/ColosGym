@@ -15,12 +15,10 @@ static uint8_t playerToSeat(const Game *game, const uint8_t player0Seat,
 {
   return (player + player0Seat) % game->numPlayers;
 }
-double getReward(const char *msg, const char *lastMsg,
-                 const int episode, const int playerNum, int fix_table)
+double getReward(const char *msg, const int episode, const int playerNum, int fix_table)
 {
     int player0Seat=0,len=0,result=0;
     MatchState state;
-    readMatchState(lastMsg, game, &state);
     len = readMatchState(msg, game, &state);
     assert(len > 0);
     if(!fix_table){
@@ -80,11 +78,11 @@ static PyObject *_getReward(PyObject *self, PyObject *args)
     int _fix = 0;
     int _epi,_pNum;
 
-    if (!PyArg_ParseTuple(args, "ssii|i", &_msg, &_lastMsg, &_epi,&_pNum,&_fix))
+    if (!PyArg_ParseTuple(args, "sii|i", &_msg, &_epi,&_pNum,&_fix))
     {
         return NULL;
     }
-    res = getReward(_msg, _lastMsg,_epi,_pNum,_fix);
+    res = getReward(_msg, _epi, _pNum, _fix);
     return PyFloat_FromDouble(res);
 }
 static PyObject *_initGame(PyObject *self, PyObject *args)

@@ -1,40 +1,33 @@
 import socket
-import GameSolver
 import threading
 import time
-import numpy as np
-
-
-GAME = LeducPlayer3
 
 
 class Player(object):
     """
-    这里说明Player的状态表示方法
-    状态：大小为（玩家数×回合数×最大加注数）+ （回合数×rank×花色数）前者为动作状态，后者为牌面信息
-    动作状态为当前状态的OneHot
-    牌面状态为每个回合新可见的几张牌的在0-1向量中的表示，1表示牌值为该牌的牌存在
-    状态大小跟据游戏的不同而不同，当前回合结束时返回全零，异常返回None
+    Player类完成与Dealer的交互工作，状态，奖励等信息取决于输入的游戏
+    值得注意的是，交互的信息头必须是MATCHSTATE
     """
-    ACTION_LIST = ['f', 'c', 'r']
-    BUFFERSIZE = 256
 
-    def __init__(self, port,playerNum = -1, ip='localhost',playerName='www',buffersize=256):
+    def __init__(self, port, game, player_index, ip='localhost', player_name='www', buffersize=256):
         """
         初始化玩家类，在这里Player主要还是完成链接dealer 和 发送动作，接受信息的工作
         :param port: 端口
         :param ip: IP地址，默认值为’localhost‘
-        :param playerNum: 玩家的顺序，必须的参数，从0开始index
-        :param playerName: 玩家的名字，非必须，Example:'Alice'，默认值为www+playerNum
+        :param player_index: 玩家的位置
+        :param game: 游戏定义
+        :param player_name: 玩家的名字，非必须，Example:'Alice'，默认值为www+playerNum
         :param buffersize: 接收字串的buffer大小，默认为256
         """
         # 下面几个变量是应该要去除的变量
-        if(playerName is 'www'):
-            self.playerName = playerName + str(playerNum);
+        self.GameParams = game.get_params()
+        if player_name is 'www':
+            self.playerName = player_name + str(player_index)
         else:
-            self.playerName = playerName
-        Player.BUFFERSIZE = buffersize
-        self.playerNum = playerNum
+            self.playerName = player_name
+        self.PlayerIndex = player_index
+        self.BUFFER_SIZE = buffersize
+        self.Game = game
         self.lastMsg = ''
         self.currentMsg = ''
         self.state = None
@@ -42,43 +35,43 @@ class Player(object):
         self.resetable = True
         self.finish = True
         self.exit = False
-        self.connectToServer(port=port, ip=ip)
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.connect_to_server(port=port, ip=ip)
         self.msgQueue = []
         self.lock = threading.Lock()
-        t = threading.Thread(target=self.recvMsg)
+        t = threading.Thread(target=self.receive_message)
         t.start()
-        GameSolver.initGame(GAME.gamePath)  # 必须初始化！
 
-    def connectToServer(self, port, ip):
+    def connect_to_server(self, port, ip):
         """
         做了一些和Dealer的socket链接的工作
         :param port: 端口数值
         :param ip: ip字符串
         :return:
         """
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.connect((ip, port))
         self.socket.send(b'VERSION:2.0.0\n')
 
     def reset(self):
         """
-        这个只是为了与Gym更相似而设值的
+        这个只是为了与Gym更相似而设值的。
+        由于是多人游戏，如果在不可reset的时候，reset,在后面会考虑放弃类操作
         :return: 在可reset的时候返回状态，回报，结束flag，不可reset时调用会返回三个None
         """
-        if self.resetable == False:
+        if not self.resetable:
             print("wrong timing to reset")
             return None, None, None
         else:
             self.resetable = False
             try:
-                o, r, d = self.innerMsgloop()
+                o, r, d = self.inner_message_loop()
                 return o, r, d
             except Exception as e:
                 print("error when reset:")
                 print(e)
                 return None, None, None
 
-    def recvMsg(self):
+    def receive_message(self):
         """
         处理socket的接收工作，接收了以后就存放在队列中，等待agent调用时才处理
         原则上是一个监听端口的死循环，由于socket的阻塞，所以性能并不会有问题
@@ -86,14 +79,14 @@ class Player(object):
         :return:
         """
         while True:
-            socketInfo = self.socket.recv(Player.BUFFERSIZE).decode('ascii')
-            if not socketInfo:
+            socket_info = self.socket.recv(self.BUFFER_SIZE).decode('ascii')
+            if not socket_info:
                 break
-            socketInfo = socketInfo.split('MATCHSTATE')  # 由于时间不统一，可能一次收到多条msg
+            socket_info = socket_info.split('MATCHSTATE')  # 由于时间不统一，可能一次收到多条msg
 
             self.lock.acquire()
             try:
-                for msg in socketInfo:
+                for msg in socket_info:
                     if msg == '':
                         continue
                     self.msgQueue.append("MATCHSTATE" + msg)
@@ -112,16 +105,16 @@ class Player(object):
         :return: 返回值是innerloop的返回值，即观察，回报，完成flag
         """
         msg = self.currentMsg.rstrip('\r\n')
-        act = '{}:{}\r\n'.format(msg, Player.ACTION_LIST[action])
+        act = '{}:{}\r\n'.format(msg, self.GameParams['actions'][action])
         act = bytes(act, encoding='ascii')
         respon = self.socket.send(act)
         if respon == len(act):
-            return self.innerMsgloop()
+            return self.inner_message_loop()
         else:
             print("Error when sending action")
             return None
 
-    def innerMsgloop(self):
+    def inner_message_loop(self):
         """
         内部的一个循环，处理类内保存的消息队列。
         做这个的原因是接收状态和算法Agent取状态的时间不一致
@@ -131,7 +124,7 @@ class Player(object):
         # 循环直至可返回结果
         while True:
             if len(self.msgQueue) == 0:
-                if self.exit == True:
+                if self.exit:
                     return None, None, None
                 else:
                     time.sleep(0.000001)
@@ -142,9 +135,9 @@ class Player(object):
             finally:
                 self.lock.release()
 
-            flag = self.handleMsg(msg)
+            flag = self.handle_message(msg)
             if flag == 2:  # act
-                obser = _getObser(msg)
+                observe = self.Game.get_observe(msg)
                 reward = 0
                 done = 0
                 self.currentMsg = msg
@@ -153,145 +146,22 @@ class Player(object):
                 self.lastMsg = msg
                 continue
             if flag == 3:
-                obser = np.zeros(shape=(GAME.numPlayers * GAME.numRounds * GAME.maxRaiseTimes +
-                                 GAME.numRounds * GAME.numSuits * GAME.numRanks))
-                episode = int(msg.split(':')[2])
-                reward = GameSolver.getReward(msg,self.lastMsg,episode,self.playerNum,0)
+                observe = self.Game.get_empty_observe()
+                episode = self.Game.get_episode(msg)
+                reward = self.Game.get_reward(msg, episode, self.PlayerIndex, 0)
                 done = 1
                 self.resetable = True  # allow a reset() call
                 self.lastMsg = msg
-                #self.log.writelines(msg)
                 break
+            if flag == -4:
+                raise ValueError('状态错误！')
 
-        return obser, reward, done
+        return observe, reward, done
 
-
-
-    def handleMsg(self, msg):
+    def handle_message(self, msg):
         """
         处理消息，看消息代表的状态，以在后面决定消息的处理方法
         :param msg: 消息字符串
         :return: 状态的flag ： error=-4, finish==3, act==2, not acting==-2
         """
-        state = GameSolver.ifCurrentPlayer(msg)
-        if state == -4.0:
-            print("read state error")
-            state = 3.0  # 根据log的规律。。。。具体我再看看
-        return state
-
-    def _getReward(self, episode):
-        """
-        跟据消息返回回报,已经抛弃，可随意忽视，但仍作保留，以便从文档获得reward
-        :param episode: 当前的局数
-        :return: reward，double
-        """
-        while True:
-            state_str = self.result.readline().rstrip('\n')
-            state_list = state_str.split(":")
-            if len(state_list) == 6:
-                if episode == int(state_list[1]):
-                    break
-
-        reward_dict = dict(
-            zip(state_list[5].split('|'), state_list[4].split('|')))
-        reward = float(reward_dict[self.playerName])
-
-        return reward
-
-
-def calculateCardVal(card):
-    """
-    这里计算牌在牌向量的index,改动说明：牌面由原来的从小到大，改为从大到小，即K对应2，2对应13
-    :param card: 一张牌的字符串，Example:"9h"
-    :return: 返回牌的index，计算方法：牌面值+
-    """
-    if card is "":
-        return 0
-    # 声明所有牌的List,但跟据游戏的类型选择
-    card_num = ['A', 'K', 'Q', 'J', 'T', '9', '8'
-        , '7', '6', '5', '4', '3', '2']
-    num4card = [n for n in range(0, GAME.numRanks)]
-    card_dict = dict(zip(card_num, num4card))
-
-    suit = ['h', 's', 'd', 'c']  # 同上声明所有，使用部分
-    num4suit = [n for n in range(0, GAME.numSuits)]
-    suit_dict = dict(zip(suit, num4suit))
-
-    return card_dict[card[0]] + suit_dict[card[1]] * GAME.numRanks + 1
-
-
-def cards2cardVector(card):
-    """
-    把牌的字符串转化为向量，字符串的每一张牌与向量内的index相对应，可有多个
-    :param card: 牌的名字，EXAMPLE：“5d6hTc”
-    :return: 返回一个回合的牌面信息向量
-
-    """
-    cardVector = np.zeros(shape=(GAME.numSuits * GAME.numRanks))
-    i = 0
-    while i < (len(card) - 1):
-        temp = ''
-        temp += card[i]
-        i += 1
-        temp += card[i]
-        i += 1
-        # 此处对card的值减1是为了和Index对应，使用旧代码有点不一样
-        cardVector[calculateCardVal(card=temp) - 1] = 1
-    return cardVector
-
-
-def getCardMtx(stateList_card):
-    """
-    获得牌面信息的Matrix
-    :param stateList_card:仅接收非终结状态的消息，Example：|2c3d/5d6hTc/6d
-    :return: 牌面信息matrix，shape：回合数×牌的种类，每一行为当前回合新看到的一个牌
-    """
-    cardMtx = np.zeros(shape=(GAME.numRounds, GAME.numSuits * GAME.numRanks))
-    deck_cards = stateList_card.split("/")  # 不同回合亮的牌会用“/”分割
-    # 不同玩家的牌会用“|”分割，但是这里为非终结态，只有自己的牌，直接删去即可
-    deck_cards[0] = deck_cards[0].replace('|','')
-    i = 0
-    for cards in deck_cards:  # deck_cards 为一个数组，Example: ['2c3d','5d6hTc','6d']
-        cardMtx[i, :] = cards2cardVector(card=cards)
-        i += 1
-    return cardMtx
-
-
-def getActionStateMtx(action_trace, player_num):
-    """
-    获得动作状态的matrix
-    :param action_trace: 动作的描述，是一个字符串，example：rc/crrc/
-    :param player_num:  现在玩家的号码，int ， 从0开始index
-    :return:一个多维数组，大小为玩家数量×回合数×最大加注次数,在相应的状态置唯一一个1（OneHot）
-    """
-    actionList = action_trace.split('/')
-    actionMtx = np.zeros(shape=(GAME.numPlayers, GAME.numRounds, GAME.maxRaiseTimes))  # be safe
-    rounds = len(actionList) - 1  # 因为数组从0开始index
-    actionCurrent = actionList.pop()
-    raise_size = 0
-    # 计算加注次数
-    for action in actionCurrent:
-        if action == 'r':
-            raise_size += 1
-    # 解析动作完成，记录当前状态
-    actionMtx[player_num, rounds, raise_size - 1] = 1
-    return actionMtx
-
-
-def _getObser(msg):
-    """
-    提供游戏状态array
-    :param msg:输入Dealer传入的消息
-    :return:返回游戏的状态，包括动作和牌面信息
-    """
-    msg = msg.rstrip('\r\n')
-    statelist = msg.split(":")
-    # 这里用“：”分开后分别处理各个状态
-    action_trace = statelist[3]  # eg rc/crrc/
-    card = statelist[4]  # eg |2c3d/5d6hTc/6d
-    player_num = int(statelist[1])
-    card_mtx = getCardMtx(stateList_card=card)
-    action_mtx = getActionStateMtx(action_trace=action_trace, player_num=player_num)
-    # 合并牌面和动作记录
-    obser = np.append(action_mtx.flatten(), card_mtx.flatten())
-    return obser
+        return self.Game.if_current_player(msg)

@@ -1,8 +1,11 @@
-import player
+from Actor.player import Player
+from ColosGame.PokerGame import LimitedPokerGame
 import random
 import sys
 import time
 
+Game = LimitedPokerGame(num_players=3, num_rounds=2, num_suits=2, num_ranks=3, num_hole_cards=1,
+                         num_raise_times=2, num_boardcards=1, game_path="/home/xzp/PycharmProjects/AlgScript_poker/LimitLeduc.game")
 def main():
     test = True
     if test:
@@ -14,8 +17,7 @@ def main():
         logpath = sys.argv[2]
         playerName = sys.argv[3]
 
-
-    ply = player.Player(playerNum=1,port=port)
+    ply = Player(game=Game, player_index=1,port=port)
     Total_reward = 0.0
     episode = 0
 

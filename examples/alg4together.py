@@ -1,11 +1,13 @@
-import player
+from Actor.player import Player
+from ColosGame.PokerGame import LimitedPokerGame
 import random
 import sys
 import time
 import threading
 
 # 更新后的用法，大体相同，在player初始化的时候，加入游戏类别参数即可
-
+Game = LimitedPokerGame(num_players=3, num_rounds=2, num_suits=2, num_ranks=3, num_hole_cards=1,
+                         num_raise_times=2, num_boardcards=1, game_path="/home/xzp/PycharmProjects/AlgScript_poker/LimitLeduc.game")
 def game4palyer(player):
     Total_reward = 0.0
     error = 0
@@ -40,15 +42,14 @@ def main():
         logpath = sys.argv[2]
         playerName = sys.argv[3]
 
-
     port = 41492
-    ply = player.Player(playerNum=0,port=port)
+    ply = Player(game=Game, player_index=0,port=port)
 
     port2 = 35435
-    ply2 = player.Player(playerNum=1,port=port2)
+    ply2 = Player(game=Game, player_index=1,port=port2)
 
     port3 = 33877
-    ply3 = player.Player(playerNum=2, port=port3)
+    ply3 = Player(game=Game, player_index=2, port=port3)
 
     t1 = threading.Thread(target=game4palyer,args=(ply,))
     t2 = threading.Thread(target=game4palyer,args=(ply2,))
