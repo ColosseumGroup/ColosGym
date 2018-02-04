@@ -148,7 +148,7 @@ class Player(object):
             if flag == 3:
                 observe = self.Game.get_empty_observe()
                 episode = self.Game.get_episode(msg)
-                reward = self.Game.get_reward(msg, episode, self.PlayerIndex, 0)
+                reward = self.Game.get_reward(msg, episode, self.PlayerIndex)
                 done = 1
                 self.resetable = True  # allow a reset() call
                 self.lastMsg = msg
@@ -164,4 +164,4 @@ class Player(object):
         :param msg: 消息字符串
         :return: 状态的flag ： error=-4, finish==3, act==2, not acting==-2
         """
-        return self.Game.if_current_player(msg)
+        return self.Game.is_current_player(msg)
