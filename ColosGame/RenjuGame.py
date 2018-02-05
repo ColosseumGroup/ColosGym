@@ -25,6 +25,21 @@ class Renju(ColosGame):
     def get_empty_observe(self):
         return np.zeros(shape=(Renju.BOARD_SIZE, Renju.BOARD_SIZE))
 
+    def make_action_message(self, msg, action):
+        """
+        the received message has opponent's action at its back, must be removed first
+        :param msg: complete message
+        :param action: string looks like col/row
+        :return: message to be sent
+        """
+        msg = msg.rstrip('\r\n')
+        msg_list = msg.split(":")
+        result = ''
+        for i in range(len(msg_list)-1):
+            result += msg_list[i]+":"
+        result+=action + "\r\n"
+        return result
+
     def get_reward(self, msg, episode, player_index):
         """
         有结果就返回
@@ -35,7 +50,7 @@ class Renju(ColosGame):
         """
         msg_list = msg.split(":")
         viewing_player = int(msg_list[1])
-        finished_flag = int(msg_list[4])
+        finished_flag = int(msg_list[5])
         # 发送给的编号与完成编号不一致则是失败方，反之为成功方
         if viewing_player is finished_flag:
             return 1
@@ -56,14 +71,15 @@ class Renju(ColosGame):
         :param msg: dealer提供的消息
         :return: finish==3, act==2, not acting==-2
         """
+        msg = msg.rstrip('\r\n')
         msg_list = msg.split(":")
         viewing_player = int(msg_list[1])
         current_player = int(msg_list[2])
-        finished_flag = int(msg_list[4])
-        if msg_list[6] is not '':
+        finished_flag = int(msg_list[5])
+        if msg_list[6].find('/')>0:
             coordinate = msg_list[6].split('/')
             # 对每个有动作消息加一个点
-            self.__add_piece(int(coordinate[0]), int(coordinate[1]), current_player)
+            self.__add_piece(int(coordinate[0]), int(coordinate[1]), int(coordinate[2]))
         if finished_flag is not 0:
             self.resset_board()
             return 3

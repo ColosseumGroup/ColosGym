@@ -82,6 +82,15 @@ class LimitedPokerGame(ColosGame):
         """
         return int(msg.split(':')[2])
 
+    def make_action_message(self, msg, action):
+        """
+        concate the action message at the back of the line
+        :param msg: message without /r/n at its back
+        :param action: index of the action type 0==fold 1==call 2==raise
+        :return: message
+        """
+        return '{}:{}\r\n'.format(msg, self.params['actions'][action])
+
     def __calculate_card_value(self, card):
         """
         这里计算牌在牌向量的index,改动说明：牌面由原来的从小到大，改为从大到小，即K对应2，2对应13

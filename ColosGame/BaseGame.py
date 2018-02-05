@@ -16,6 +16,9 @@ class ColosGame(object):
     def get_empty_observe(self):
         raise NotImplementedError('必须实现获得空观察的方法')
 
+    def make_action_message(self,msg,action):
+        raise NotImplementedError("Action message must be implemented based on protocol")
+        
     def get_reward(self, msg, episode, player_index):
         raise NotImplementedError('必须实现getReward方法！')
 
