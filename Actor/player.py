@@ -1,7 +1,6 @@
 import socket
 import threading
-import time
-
+import queue
 
 class Player(object):
     """
@@ -37,8 +36,7 @@ class Player(object):
         self.exit = False
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.connect_to_server(port=port, ip=ip)
-        self.msgQueue = []
-        self.lock = threading.Lock()
+        self.msgQueue = queue.Queue()
         t = threading.Thread(target=self.receive_message)
         t.start()
 
@@ -84,15 +82,11 @@ class Player(object):
                 break
             socket_info = socket_info.split('MATCHSTATE')  # 由于时间不统一，可能一次收到多条msg
 
-            self.lock.acquire()
-            try:
-                for msg in socket_info:
-                    if msg == '':
-                        continue
-                    self.msgQueue.append("MATCHSTATE" + msg)
-            finally:
-                self.lock.release()
-        time.sleep(1)  # 退出循环则游戏已经关闭
+            for msg in socket_info:
+                if msg == '':
+                    continue
+                self.msgQueue.put("MATCHSTATE" + msg)
+                
         print("Ready to exit")
         self.exit = True
         self.resetable = False
@@ -123,17 +117,11 @@ class Player(object):
         """
         # 循环直至可返回结果
         while True:
-            if len(self.msgQueue) == 0:
-                if self.exit:
-                    return None, None, None
-                else:
-                    time.sleep(0.000001)
-                    continue
-            self.lock.acquire()
-            try:
-                msg = self.msgQueue.pop(0)
-            finally:
-                self.lock.release()
+
+            if self.exit:
+                return None, None, None
+
+            msg = self.msgQueue.get()
 
             flag = self.handle_message(msg)
             if flag == 2:  # act
