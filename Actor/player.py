@@ -131,9 +131,11 @@ class Player(object):
                 reward = 0
                 done = 0
                 self.currentMsg = msg
+                self.msgQueue.task_done()
                 break
             elif flag == -2:  # not acting
                 self.lastMsg = msg
+                self.msgQueue.task_done()
                 continue
             elif flag == 3:
                 observe = self.Game.get_empty_observe()
@@ -142,8 +144,10 @@ class Player(object):
                 done = 1
                 self.resetable = True  # allow a reset() call
                 self.lastMsg = msg
+                self.msgQueue.task_done()
                 break
             else:
+                self.msgQueue.task_done()
                 raise ValueError('状态错误！')
 
         return observe, reward, done
