@@ -8,7 +8,7 @@ class Player(object):
     值得注意的是，交互的信息头必须是MATCHSTATE
     """
 
-    def __init__(self, port, game, player_index, ip='localhost', player_name='www', buffersize=256):
+    def __init__(self, port, game, player_index, ip='localhost', player_name='www', buffersize=1024, get_timeout=10):
         """
         初始化玩家类，在这里Player主要还是完成链接dealer 和 发送动作，接受信息的工作
         :param port: 端口
@@ -16,7 +16,8 @@ class Player(object):
         :param player_index: 玩家的位置
         :param game: 游戏定义
         :param player_name: 玩家的名字，非必须，Example:'Alice'，默认值为www+playerNum
-        :param buffersize: 接收字串的buffer大小，默认为256
+        :param buffersize: 接收字串的buffer大小，默认为1024
+        :param get_timeout: 读取状态超时
         """
         # 下面几个变量是应该要去除的变量
         self.GameParams = game.get_params()
@@ -34,6 +35,7 @@ class Player(object):
         self.resetable = True
         self.finish = True
         self.exit = False
+        self.timeout = get_timeout
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.connect_to_server(port=port, ip=ip)
         self.msgQueue = queue.Queue()
@@ -121,7 +123,7 @@ class Player(object):
             if self.exit:
                 return None, None, None
 
-            msg = self.msgQueue.get()
+            msg = self.msgQueue.get(timeout=self.timeout)
 
             flag = self.handle_message(msg)
             if flag == 2:  # act
@@ -130,10 +132,10 @@ class Player(object):
                 done = 0
                 self.currentMsg = msg
                 break
-            if flag == -2:  # not acting
+            elif flag == -2:  # not acting
                 self.lastMsg = msg
                 continue
-            if flag == 3:
+            elif flag == 3:
                 observe = self.Game.get_empty_observe()
                 episode = self.Game.get_episode(msg)
                 reward = self.Game.get_reward(msg, episode, self.PlayerIndex)
@@ -141,7 +143,7 @@ class Player(object):
                 self.resetable = True  # allow a reset() call
                 self.lastMsg = msg
                 break
-            if flag == -4:
+            else:
                 raise ValueError('状态错误！')
 
         return observe, reward, done
