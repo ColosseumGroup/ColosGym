@@ -4,10 +4,8 @@ import random
 import sys
 import time
 import threading
+from ColosGame.PokerExamples import get_holdem_limit_2p
 
-# 更新后的用法，大体相同，在player初始化的时候，加入游戏类别参数即可
-Game = LimitedPokerGame(num_players=3, num_rounds=2, num_suits=2, num_ranks=3, num_hole_cards=1,
-                         num_raise_times=2, num_boardcards=1, game_path="/home/xzp/Repos/ColosGym/ColosGame/PokerDefine/LimitLeduc.game")
 def game4palyer(player):
     Total_reward = 0.0
     error = 0
@@ -25,6 +23,7 @@ def game4palyer(player):
         while True:
             action = random.randint(0,2)
             action = 2
+            print('action:', action)
             obser_,reward,done = player.step(action)
 
             if done:
@@ -42,21 +41,17 @@ def main():
         logpath = sys.argv[2]
         playerName = sys.argv[3]
 
-    port = 41827
-    ply = Player(game=Game, player_index=0,port=port)
+    port = 45219
+    ply = Player(game=get_holdem_limit_2p(), player_index=0,port=port)
 
-    port2 = 33945
-    ply2 = Player(game=Game, player_index=1,port=port2)
+    port2 = 37663
+    ply2 = Player(game=get_holdem_limit_2p(), player_index=1,port=port2)
 
-    port3 = 43431
-    ply3 = Player(game=Game, player_index=2, port=port3)
 
     t1 = threading.Thread(target=game4palyer,args=(ply,))
     t2 = threading.Thread(target=game4palyer,args=(ply2,))
-    t3 = threading.Thread(target=game4palyer,args=(ply3,))
     t1.start()
     t2.start()
-    t3.start()
 
 if __name__ == '__main__':
     main()
