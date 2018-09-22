@@ -4,7 +4,7 @@ import random
 import sys
 import time
 import threading
-from ColosGame.PokerExamples import get_holdem_limit_2p
+from ColosGame.z import get_holdem_limit_2p
 
 def game4palyer(player):
     Total_reward = 0.0
@@ -41,11 +41,11 @@ def main():
         logpath = sys.argv[2]
         playerName = sys.argv[3]
 
-    port = 45219
-    ply = Player(game=get_holdem_limit_2p(), player_index=0,port=port)
+    port = 37369
+    ply = Player(game=get_holdem_limit_2p(), player_index=0,ip='139.224.114.52',port=port)
 
-    port2 = 37663
-    ply2 = Player(game=get_holdem_limit_2p(), player_index=1,port=port2)
+    port2 = 33898
+    ply2 = Player(game=get_holdem_limit_2p(), player_index=1,ip='139.224.114.52',port=port2)
 
 
     t1 = threading.Thread(target=game4palyer,args=(ply,))
