@@ -1,63 +1,39 @@
-import random
 from client import Client
-
-
-def poker_decision(observation):
-    """
-    有限注扑克随机决策
-    :param observation: 见 ColosGame/PokerGame
-    :return: 数字，0-2分别代表'f', 'c', 'r'
-    """
-    return random.randint(0, 2)
-
-
-def renju_decision(observation):
-    """
-    五子棋随机决策
-    :param observation: 棋盘矩阵
-    :return: 下子位置决策x/y
-    """
-    # In renju confict action will lead to fold
-    while True:
-        X = random.randint(0, 14)
-        Y = random.randint(0, 14)
-        if observation[X, Y] != 0:
-            continue
-        return "%d/%d" % (X, Y)
+from example_strategy import *
 
 
 def main():
 
     game_type = 'holdem.limit.2p.reverse_blinds'
-    ip = '139.224.114.52'
-    port0 = 44203
-    port1 = 37390
+    ip = 'localhost'
+    port0 = 43791
+    port1 = 41291
 
     if game_type == 'renju':
         client0 = Client(
-            game=game_type, decision_func=renju_decision,
+            game=game_type, decision_func=renju_random_decision,
             player_index=0, ip=ip, port=port0
         )
         client1 = Client(
-            game=game_type, decision_func=renju_decision,
+            game=game_type, decision_func=renju_random_decision,
             player_index=1, ip=ip, port=port1
         )
     elif game_type == 'holdem.limit.2p.reverse_blinds':
         client0 = Client(
-            game=game_type, decision_func=poker_decision,
+            game=game_type, decision_func=poker_threshold_cautious_decision,
             player_index=0, ip=ip, port=port0
         )
         client1 = Client(
-            game=game_type, decision_func=poker_decision,
+            game=game_type, decision_func=poker_threshold_aggressive_decision,
             player_index=1, ip=ip, port=port1
         )
     elif game_type == 'LimitLeduc':
         client0 = Client(
-            game=game_type, decision_func=poker_decision,
+            game=game_type, decision_func=poker_random_decision,
             player_index=0, ip=ip, port=port0
         )
         client1 = Client(
-            game=game_type, decision_func=poker_decision,
+            game=game_type, decision_func=poker_random_decision,
             player_index=1, ip=ip, port=port1
         )
     else:

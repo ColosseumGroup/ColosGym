@@ -195,7 +195,7 @@ double estimateKUnshowedArray(uint8_t* publicCardArray, uint8_t* privateCardArra
     return winningRate / publicCaseCounter;
 }
 /* 这里胜率是在当前公共牌下，对对手所有可能的手牌作出的估计，不考虑未出现的公共牌 */
-double estimateWithNPublic(const char *msg, const char *private, const int N)
+double estimateWithNPublic(const char *msg, const char *privateC, const int N)
 {
     int i;
     double winningRate;
@@ -208,7 +208,7 @@ double estimateWithNPublic(const char *msg, const char *private, const int N)
     uint8_t *privateCardArray = (uint8_t *)malloc((N + PRIVATE_CARD) * sizeof(uint8_t));
     for (i = 0; i < publicCardSize; i++)
         privateCardArray[i] = publicCardArray[i];
-    readCards(private, privateCardSize, privateCardArray + publicCardSize);
+    readCards(privateC, privateCardSize, privateCardArray + publicCardSize);
 
     winningRate = estimateWithNPublicArray(publicCardArray,privateCardArray,N);
 
@@ -216,7 +216,7 @@ double estimateWithNPublic(const char *msg, const char *private, const int N)
     free(privateCardArray);
     return winningRate;
 }
-double estimate1Unshowed(const char *msg, const char*private, const int pbcN){
+double estimate1Unshowed(const char *msg, const char*privateC, const int pbcN){
     double winningRate;
     int i;
     const int unPbcN = 1;
@@ -226,14 +226,14 @@ double estimate1Unshowed(const char *msg, const char*private, const int pbcN){
     uint8_t *privateCardArray = (uint8_t *)malloc(( pbcN + unPbcN + PRIVATE_CARD) * sizeof(uint8_t));
     for (i = 0; i < pbcN; i++)
         privateCardArray[i] = publicCardArray[i];
-    readCards(private, PRIVATE_CARD, privateCardArray + pbcN + unPbcN);
+    readCards(privateC, PRIVATE_CARD, privateCardArray + pbcN + unPbcN);
     winningRate = estimate1UnshowedArray(publicCardArray, privateCardArray,pbcN);
     free(publicCardArray);
     free(privateCardArray);
     return winningRate;
 }
 /* 这里的胜率是考虑了未出现的公共牌以及对手的手牌计算的胜率 */
-double estimate2Unshowed(const char *msg, const char *private, const int pbcN)
+double estimate2Unshowed(const char *msg, const char *privateC, const int pbcN)
 {
     double winningRate;
     int i;
@@ -244,7 +244,7 @@ double estimate2Unshowed(const char *msg, const char *private, const int pbcN)
     uint8_t *privateCardArray = (uint8_t *)malloc(( pbcN + unPbcN + PRIVATE_CARD) * sizeof(uint8_t));
     for (i = 0; i < pbcN; i++)
         privateCardArray[i] = publicCardArray[i];
-    readCards(private, PRIVATE_CARD, privateCardArray + pbcN + unPbcN);
+    readCards(privateC, PRIVATE_CARD, privateCardArray + pbcN + unPbcN);
     winningRate =  estimateKUnshowedArray(publicCardArray, privateCardArray, pbcN, 2);
     free(publicCardArray);
     free(privateCardArray);
@@ -342,11 +342,11 @@ static PyMethodDef PokerCalculatorMethods[] = {
      _estimatePrivateCard,
      METH_VARARGS,
      ""},
-    {"estimate_turn",
+    {"estimate_river",
      _estimateWithNPublic,
      METH_VARARGS,
      ""},
-    {"estimate_river",
+    {"estimate_turn",
      _estimate1UnShowed,
      METH_VARARGS,
      ""},

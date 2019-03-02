@@ -18,7 +18,7 @@ class Client(threading.Thread):
         Total_reward = 0.0
         episode = 0
         while True:
-            obser,reward,done = self.player.reset()
+            obser, reward, done = self.player.reset()
             if done:
                 Total_reward += reward
                 episode += 1
@@ -29,11 +29,11 @@ class Client(threading.Thread):
                 break
             while True:
                 action = self.decision_function(obser)
-                obser_, reward,done = self.player.step(action)
+                obser_, reward, done = self.player.step(action)
 
                 if done:
                     Total_reward += reward
                     episode += 1
                     break
 
-            print("player:",self.player.playerName,'now:',Total_reward,"episode:",episode)
+            print("player:", self.player.playerName, 'now:', Total_reward, "episode:", episode)

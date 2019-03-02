@@ -1,4 +1,4 @@
-from ColosGame.BaseGame import ColosGame
+from ColosGame.GeneralPokerGame import GeneralPokerGame
 import numpy as np
 try:
     import GameSolver
@@ -6,29 +6,13 @@ except ImportError as e:
     print(e)
 
 
-class LimitedPokerGame(ColosGame):
+class LimitedPokerGameMtx(GeneralPokerGame):
     """
     状态：大小为（玩家数×回合数×最大加注数）+ （回合数×rank×花色数）前者为动作状态，后者为牌面信息
     动作状态为当前状态的OneHot
     牌面状态为每个回合新可见的几张牌的在0-1向量中的表示，1表示牌值为该牌的牌存在
     状态大小跟据游戏的不同而不同，当前回合结束时返回全零，异常返回None
     """
-
-    def __init__(self, num_players, num_rounds,
-                 num_suits, num_ranks, num_hole_cards, num_raise_times, num_boardcards, game_path):
-        self.params['numPlayers'] = num_players
-        self.params['numRounds'] = num_rounds
-        self.params['numSuits'] = num_suits
-        self.params['numRanks'] = num_ranks
-        self.params['numHoleCards'] = num_hole_cards
-        self.params['maxRaiseTimes'] = num_raise_times
-        self.params['numBoardCards'] = num_boardcards
-        self.params['gamePath'] = game_path
-        self.params['actions'] = ['f', 'c', 'r']
-        GameSolver.initGame(game_path)  # 必须初始化！
-
-    def set_from_config(self, game_path):
-        pass
 
     def get_observe(self, msg):
         """
@@ -55,41 +39,6 @@ class LimitedPokerGame(ColosGame):
         """
         return np.zeros(shape=(self.params['numPlayers'] * self.params['numRounds'] * self.params['maxRaiseTimes']
                                + self.params['numRounds'] * self.params['numSuits'] * self.params['numRanks']))
-
-    def get_reward(self, msg, episode, player_index):
-        """
-        利用GameSolver完成从msg获得Reward的工作
-        :param msg: 完整消息
-        :param episode: 当前的局数
-        :param player_index: 玩家的位置
-        :return: reward，double
-        """
-        return GameSolver.getReward(msg, episode, player_index, 0)
-
-    def is_current_player(self, msg):
-        """
-        看当前玩家的状态
-        :param msg: dealer提供的消息
-        :return:error=-4, finish==3, act==2, not acting==-2
-        """
-        return GameSolver.ifCurrentPlayer(msg)
-
-    def get_episode(self, msg):
-        """
-        解析当前局数
-        :param msg:
-        :return: 对局次数
-        """
-        return int(msg.split(':')[2])
-
-    def make_action_message(self, msg, action):
-        """
-        concate the action message at the back of the line
-        :param msg: message without /r/n at its back
-        :param action: index of the action type 0==fold 1==call 2==raise
-        :return: message
-        """
-        return '{}:{}\r\n'.format(msg, self.params['actions'][action])
 
     def __calculate_card_value(self, card):
         """

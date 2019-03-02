@@ -101,7 +101,7 @@ class Player(object):
         :return: 返回值是innerloop的返回值，即观察，回报，完成flag
         """
         msg = self.currentMsg.rstrip('\r\n')
-        act = self.Game.make_action_message(msg,action)
+        act = self.Game.make_action_message(msg, action)
         act = bytes(act, encoding='ascii')
         respon = self.socket.send(act)
         if respon == len(act):
